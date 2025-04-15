@@ -25,10 +25,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@master
+      uses: actions/checkout@v3
     
     - name: Set up Python
-      uses: actions/setup-python@master
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
@@ -39,7 +39,9 @@ jobs:
         
     - name: Setup Firebase credentials
       run: |
-        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > firebase-service-account.json
+        echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > firebase-service-account.json
+        # Verify JSON is valid
+        python -c "import json; json.load(open('firebase-service-account.json'))"
         echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> $GITHUB_ENV
     
     - name: Create .env file
@@ -72,7 +74,7 @@ jobs:
         pkill -f "python news_delivery.py"
     
     - name: Upload logs
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v3
       with:
         name: news-processing-logs
         path: |
