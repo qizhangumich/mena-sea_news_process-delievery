@@ -1,0 +1,85 @@
+name: SEA News Collection and Delivery
+
+on:
+  schedule:
+    # Run get_today_news.py at 19:00 UTC+8 (11:00 UTC)
+    - cron: '0 11 * * *'
+    # Run news_delivery.py at 19:30 UTC+8 (11:30 UTC)
+    - cron: '30 11 * * *'
+  workflow_dispatch:
+    inputs:
+      run_type:
+        description: 'Select which script to run'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - collect
+          - deliver
+
+jobs:
+  process-news:
+    name: Process and Deliver News
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Setup Firebase credentials
+      run: |
+        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > firebase-service-account.json
+        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> $GITHUB_ENV
+    
+    - name: Create .env file
+      run: |
+        echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+        echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> .env
+        echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
+        echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> .env
+        echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+        echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
+        echo "EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}" >> .env
+        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> .env
+    
+    - name: Run get_today_news.py
+      if: github.event.schedule == '0 11 * * *' || github.event.inputs.run_type == 'both' || github.event.inputs.run_type == 'collect'
+      run: python get_today_news.py
+    
+    - name: Run news_delivery.py with tracking
+      if: github.event.schedule == '30 11 * * *' || github.event.inputs.run_type == 'both' || github.event.inputs.run_type == 'deliver'
+      run: |
+        # Start the Flask server for tracking in the background
+        nohup python news_delivery.py > tracking_server.log 2>&1 &
+        # Wait for server to start
+        sleep 15
+        # Send emails (this is handled by the same script now)
+        curl http://localhost:5000/send_emails
+        # Wait for emails to be sent
+        sleep 10
+        # Kill the Flask server
+        pkill -f "python news_delivery.py"
+    
+    - name: Upload logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: news-processing-logs
+        path: |
+          *.log
+          logs/
+    
+    - name: Cleanup sensitive files
+      if: always()
+      run: |
+        rm -f firebase-service-account.json
+        rm -f .env 
