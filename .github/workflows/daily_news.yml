@@ -1,28 +1,22 @@
 name: Daily News Processing and Delivery
 
 on:
-  schedule:
-    # 11:00 PM UTC+4 = 19:00 UTC
-    - cron: '0 19 * * *'  # For get_today_news.py
-    # 11:30 PM UTC+4 = 19:30 UTC
-    - cron: '30 19 * * *'  # For news_delivery.py
-  # Allow manual trigger for testing
   workflow_dispatch:
+  schedule:
+    - cron: '0 19 * * *'
+    - cron: '30 19 * * *'
 
 jobs:
   process-news:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@main
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@main
         with:
           python-version: '3.9'
-          cache: 'pip'
 
       - name: Install dependencies
         run: |
