@@ -39,7 +39,7 @@ def safe_get_documents(collection_ref, max_attempts=3):
                 logger.error(f"Failed to get documents after {max_attempts} attempts: {str(e)}")
                 raise
             logger.warning(f"Attempt {attempt} failed, retrying in {2 ** attempt} seconds...")
-            time.sleep(2 ** attempt)
+            time.sleep(3 ** attempt)
 
 @backoff.on_exception(backoff.expo, Exception, max_tries=3)
 def safe_batch_commit(batch):
@@ -144,8 +144,8 @@ def generate_summaries(content):
         )
         english_summary = english_response.choices[0].message.content.strip()
         
-        # Wait 2 seconds before making next API call
-        time.sleep(2)
+        # Wait 5 seconds before making next API call
+        time.sleep(5)
         
         # Generate Chinese summary
         chinese_response = client.chat.completions.create(
@@ -170,12 +170,15 @@ def generate_summaries(content):
             "chinese_summary": ""
         }
 
-def get_today_news():
+def get_today_news(target_date=None):
     try:
-        # Get today's date in UTC+4 timezone
+        # Get target date or today's date in UTC+4 timezone
         dubai_tz = pytz.timezone('Asia/Dubai')
-        today_str = datetime.now(dubai_tz).strftime("%Y-%m-%d")
-        logger.info(f"Looking for articles with date (UTC+4): {today_str}")
+        if target_date:
+            today_str = target_date
+        else:
+            today_str = datetime.now(dubai_tz).strftime("%Y-%m-%d")
+        logger.info(f"Looking for articles with date: {today_str}")
         
         # Delete old data first
         delete_old_data()
@@ -239,8 +242,8 @@ def get_today_news():
                     doc_ref.set(article_data)
                     saved_count += 1
                     
-                    # Wait 3 seconds before processing next article (to avoid OpenAI rate limits)
-                    time.sleep(3)
+                    # Wait 5 seconds before processing next article (to avoid OpenAI rate limits)
+                    time.sleep(5)
             
             except Exception as e:
                 logger.error(f"Error processing article {doc.id}: {str(e)}")
@@ -312,8 +315,8 @@ def generate_summaries_for_today_news():
                 logger.info(f"Processed document {doc.id} ({processed_count} documents processed)")
                 
                 # 4. Wait 3 seconds before next document
-                logger.info("Waiting 3 seconds before next document...")
-                time.sleep(3)
+                logger.info("Waiting 5 seconds before next document...")
+                time.sleep(5)
                 
             except Exception as e:
                 logger.error(f"Error processing document {doc.id}: {str(e)}")
@@ -351,7 +354,8 @@ if __name__ == "__main__":
     # First ensure the today_news collection exists
     ensure_today_news_collection()
     # Then get today's news and generate summaries
-    get_today_news()
+    target_date = "2025-04-15"
+    get_today_news(target_date)
     # If you want to generate summaries for existing documents
     # generate_summaries_for_today_news()
     # If you want to just check the current count without processing new articles
