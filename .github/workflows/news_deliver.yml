@@ -44,16 +44,23 @@ jobs:
     
     - name: Run news_delivery.py with tracking
       run: |
-        # Start the Flask server for tracking in the background
-        python news_delivery.py > flask_server.log 2>&1 &
-        server_pid=$!
+        # Set Flask environment variables
+        export FLASK_APP=news_delivery.py
+        export FLASK_ENV=production
+        export FLASK_DEBUG=0
+        
+        # Start the Flask server in the background
+        flask run --host=0.0.0.0 --port=5000 > flask_server.log 2>&1 &
+        
+        # Store the PID
+        echo $! > flask.pid
         
         # Wait for server to start and verify it's running
         echo "Waiting for Flask server to start..."
         max_attempts=30
         attempt=0
         while ! curl -s http://localhost:5000/health > /dev/null; do
-          if ! ps -p $server_pid > /dev/null; then
+          if ! ps -p $(cat flask.pid) > /dev/null; then
             echo "Flask server failed to start. Server log:"
             cat flask_server.log
             exit 1
@@ -69,15 +76,15 @@ jobs:
         done
         
         echo "Flask server is running. Sending emails..."
-        # Send emails
+        # Send emails with verbose output
         curl -v http://localhost:5000/send_emails
         
         # Wait for emails to be sent
         sleep 30
         
         # Gracefully stop the Flask server
-        kill $server_pid
-        wait $server_pid
+        kill $(cat flask.pid)
+        rm flask.pid
         
         # Check the server logs
         echo "Flask server logs:"

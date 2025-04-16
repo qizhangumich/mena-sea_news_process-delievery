@@ -37,6 +37,14 @@ db = firestore.client()
 # Create Flask app for tracking
 app = Flask(__name__)
 
+# Configure Flask for production
+app.config.update(
+    ENV='production',
+    DEBUG=False,
+    TESTING=False,
+    SERVER_NAME=None  # Allow any host
+)
+
 def get_today_news():
     """Retrieve today's news from Firestore."""
     try:
@@ -155,10 +163,17 @@ def trigger_email_send():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 def start_tracking_server():
-    """Start the tracking server in a separate thread."""
+    """Start the tracking server."""
     try:
         logging.info("Starting Flask server...")
-        app.run(host='0.0.0.0', port=5000)
+        # Note: When using 'flask run', these settings will be overridden by
+        # command line arguments, but we keep them for direct script execution
+        app.run(
+            host='0.0.0.0',
+            port=5000,
+            debug=False,
+            use_reloader=False  # Important for running in GitHub Actions
+        )
     except Exception as e:
         logging.error(f"Failed to start Flask server: {e}")
         raise
