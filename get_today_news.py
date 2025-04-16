@@ -46,6 +46,25 @@ def safe_batch_commit(batch):
     """Safely commit a batch with exponential backoff"""
     batch.commit()
 
+def generate_chinese_title(title):
+    """Translate the title to Chinese using OpenAI"""
+    try:
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a professional translator. Translate the title to Chinese accurately and concisely."},
+                {"role": "user", "content": f"Translate this title to Chinese: {title}"}
+            ],
+            max_tokens=100,
+            temperature=0.7
+        )
+        chinese_title = response.choices[0].message.content.strip()
+        return chinese_title
+    except Exception as e:
+        logger.error(f"Error generating Chinese title: {str(e)}")
+        return ""
+
 def clean_source_name(source):
     """Remove 'Crawler' from source name if present"""
     if source.endswith('Crawler'):
@@ -157,6 +176,9 @@ def get_today_news():
                     cleaned_source = clean_source_name(data['source'])
                     source_counts[cleaned_source] = source_counts.get(cleaned_source, 0) + 1
                     
+                    # Generate Chinese title
+                    chinese_title = generate_chinese_title(data['title'])
+                    
                     # Generate summaries with retry logic
                     max_summary_attempts = 3
                     summaries = None
@@ -179,6 +201,7 @@ def get_today_news():
                     article_data = {
                         'article_info': {
                             'title': data['title'],
+                            'chinese_title': chinese_title,
                             'date': data['date'],
                             'content': data['content'],
                             'source': cleaned_source,
