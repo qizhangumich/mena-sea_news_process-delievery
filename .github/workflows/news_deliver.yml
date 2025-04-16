@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v3
       with:
         python-version: '3.10'
     
@@ -31,18 +31,18 @@ jobs:
         echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
         echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
         echo "EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}" >> .env
+        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-credentials.json" >> .env
     
     - name: Set up Firebase credentials
       run: |
-        echo '${{ secrets.FIREBASE_CREDENTIALS }}' > firebase_credentials.json
-        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase_credentials.json" >> .env
+        echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > firebase-credentials.json
     
     - name: Run news delivery script
       run: python news_delivery.py
     
     - name: Upload logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: delivery-logs
         path: delivery.log
@@ -51,4 +51,4 @@ jobs:
       if: always()
       run: |
         rm -f .env
-        rm -f firebase_credentials.json 
+        rm -f firebase-credentials.json 
