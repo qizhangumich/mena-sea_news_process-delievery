@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from google.api_core import retry
 from google.cloud.firestore_v1.base_query import BaseQuery
 import backoff
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
@@ -372,7 +373,16 @@ if __name__ == "__main__":
     # First ensure the today_news collection exists
     ensure_today_news_collection()
     # Then get today's news and generate summaries
-    target_date = "2025-04-15"
+    # Get target date from command line argument if provided
+    if len(sys.argv) > 1:
+        target_date = sys.argv[1]
+        logger.info(f"Using provided target date: {target_date}")
+    else:
+        # Use today's date by default
+        dubai_tz = pytz.timezone('Asia/Dubai')
+        target_date = datetime.now(dubai_tz).strftime("%Y-%m-%d")
+        logger.info(f"Using today's date: {target_date}")
+    
     get_today_news(target_date)
     # If you want to generate summaries for existing documents
     # generate_summaries_for_today_news()
