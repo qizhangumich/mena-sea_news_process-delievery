@@ -152,7 +152,7 @@ def generate_summaries(content):
         chinese_response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "用3句话总结新闻文章的主要内容。请使用正式的中文新闻语言，确保summary是以句号结尾。"},
+                {"role": "system", "content": "用3-5句话总结新闻文章的主要内容。请使用正式的中文新闻语言，确保summary是以句号结尾。"},
                 {"role": "user", "content": f"请用中文总结这篇新闻：\n\n{content}"}
             ],
             max_tokens=300,
