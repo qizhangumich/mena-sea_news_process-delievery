@@ -25,42 +25,30 @@ db = None
 def initialize_firebase():
     """Initialize Firebase with credentials"""
     global db
-    try:
-        # Check if credentials file exists and is readable
-        cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        if not cred_path:
-            logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
-            raise Exception("Firebase credentials path not set in environment")
-            
-        if not os.path.exists(cred_path):
-            logger.error(f"Firebase credentials file not found at: {cred_path}")
-            raise Exception(f"Firebase credentials file not found: {cred_path}")
-            
-        logger.info(f"Found credentials file at: {cred_path}")
+
+    logger.info(f"db is None? {db is None}")
+
+    cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if not cred_path:
+        logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+        raise Exception("Firebase credentials path not set in environment")
         
-        # Initialize Firebase app if not already initialized
-        if not firebase_admin._apps:
-            try:
-                cred = credentials.Certificate(cred_path)
-                firebase_admin.initialize_app(cred)
-                logger.info("Firebase app initialized successfully")
-            except Exception as e:
-                logger.error(f"Failed to initialize Firebase app: {str(e)}")
-                raise
-        else:
-            logger.info("Firebase app already initialized")
-            
-        # Initialize Firestore client
-        try:
-            db = firestore.client()
-            logger.info("Firestore client initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize Firestore client: {str(e)}")
-            raise
-            
-    except Exception as e:
-        logger.error(f"Failed to initialize Firebase: {str(e)}")
-        raise
+    if not os.path.exists(cred_path):
+        logger.error(f"Firebase credentials file not found at: {cred_path}")
+        raise Exception(f"Firebase credentials file not found: {cred_path}")
+        
+    logger.info(f"Found credentials file at: {cred_path}")
+
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase app initialized successfully")
+    else:
+        logger.info("Firebase app already initialized")
+
+    db = firestore.client()
+    logger.info("Firestore client initialized successfully")
+    logger.info(f"After initialization, db is None? {db is None}")
 
 def safe_get_documents(collection_ref, max_attempts=3):
     """Safely get documents from a collection with retry logic"""
