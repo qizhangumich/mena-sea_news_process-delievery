@@ -52,13 +52,23 @@ def get_today_news():
     test_items = [
         {
             'title': 'How US tariffs could impact GCC banks and economy',
-            'summary': 'Analysis of potential effects of US tariff policies on Gulf Cooperation Council financial institutions and regional economic outlook.',
             'url': 'https://example.com/news/1'
         },
         {
             'title': 'UAE announces new tech investment initiative',
-            'summary': 'The United Arab Emirates launches a $5 billion program to boost technology sector development and attract international startups.',
             'url': 'https://example.com/news/2'
+        },
+        {
+            'title': 'Saudi Arabia unveils major renewable energy project',
+            'url': 'https://example.com/news/3'
+        },
+        {
+            'title': 'Qatar expands LNG production capacity',
+            'url': 'https://example.com/news/4'
+        },
+        {
+            'title': 'Kuwait signs digital transformation agreement with global tech firms',
+            'url': 'https://example.com/news/5'
         }
     ]
     logging.info("Using test news items")
@@ -88,7 +98,7 @@ def send_email(news_items):
     try:
         # Email setup
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"SEA News Today - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
+        msg['Subject'] = f"MENA/SEA News Today - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         msg['From'] = os.getenv('EMAIL_FROM')
         recipients = os.getenv('EMAIL_RECIPIENTS')
         msg['To'] = recipients
@@ -97,11 +107,16 @@ def send_email(news_items):
         content = []
         for item in news_items:
             chinese_title = generate_chinese_title(item.get('title', ''))
+            english_summary = generate_english_summary(item.get('title', ''))
+            chinese_summary = generate_chinese_summary(english_summary)
             content.append(f"""
                 <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd;">
                     <h2>{item.get('title', '')}</h2>
                     <h3 style="color: #666;">{chinese_title}</h3>
-                    <p>{item.get('summary', '')}</p>
+                    <div style="margin: 10px 0;">
+                        <p><strong>English Summary:</strong><br>{english_summary}</p>
+                        <p><strong>Chinese Summary:</strong><br>{chinese_summary}</p>
+                    </div>
                     <a href="{item.get('url', '#')}" style="color: #0066cc;">Read more</a>
                 </div>
             """)
@@ -109,7 +124,7 @@ def send_email(news_items):
         html = f"""
         <html>
             <body style="font-family: Arial, sans-serif;">
-                <h1>SEA News Today</h1>
+                <h1>MENA/SEA News Today</h1>
                 <p>Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}</p>
                 {''.join(content)}
             </body>
@@ -129,6 +144,44 @@ def send_email(news_items):
     except Exception as e:
         logging.error(f"Error sending email: {e}")
         return False
+
+def generate_english_summary(title):
+    """Generate detailed English summary using OpenAI."""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Generate a detailed 2-3 sentence summary of this news topic."},
+                {"role": "user", "content": f"Generate a detailed summary for: {title}"}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        summary = response.choices[0].message.content.strip()
+        logging.info(f"Generated English summary for: {title}")
+        return summary
+    except Exception as e:
+        logging.error(f"Error generating English summary: {e}")
+        return "Summary not available"
+
+def generate_chinese_summary(english_summary):
+    """Generate Chinese summary using OpenAI."""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Translate this English summary to Chinese, maintaining the same level of detail and professional tone."},
+                {"role": "user", "content": f"Translate this summary: {english_summary}"}
+            ],
+            temperature=0.7,
+            max_tokens=200
+        )
+        summary = response.choices[0].message.content.strip()
+        logging.info("Generated Chinese summary")
+        return summary
+    except Exception as e:
+        logging.error(f"Error generating Chinese summary: {e}")
+        return "摘要不可用"
 
 if __name__ == '__main__':
     news_items = get_today_news()
