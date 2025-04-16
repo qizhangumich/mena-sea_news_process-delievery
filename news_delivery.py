@@ -26,8 +26,18 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# Initialize OpenAI client with error handling
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if not openai_api_key:
+    logging.warning("OPENAI_API_KEY not found in environment variables")
+    client = None
+else:
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        logging.info("OpenAI client initialized successfully")
+    except Exception as e:
+        logging.error(f"Error initializing OpenAI client: {str(e)}")
+        client = None
 
 # Initialize Firebase
 cred = credentials.Certificate(json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')))
@@ -347,9 +357,13 @@ def start_tracking_server():
 
 def generate_chinese_title(english_title):
     """Generate a Chinese title using OpenAI."""
+    if not client:
+        logging.warning("OpenAI client not available, returning default Chinese title")
+        return "无标题"  # Return "No title" in Chinese
+        
     try:
         response = client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+            model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "system",
