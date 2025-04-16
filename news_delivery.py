@@ -15,6 +15,8 @@ import logging
 from flask import Flask, request, Response, jsonify
 import requests
 import pytz
+import openai
+from openai import OpenAI
 
 # Set up logging
 logging.basicConfig(
@@ -44,6 +46,9 @@ app.config.update(
     TESTING=False,
     SERVER_NAME=None  # Allow any host
 )
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 def get_today_news():
     """Retrieve news from Firestore today_news collection."""
@@ -169,6 +174,23 @@ def trigger_email_send():
         logging.error(f"Error sending emails: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/test_title_generation')
+def test_title_generation():
+    """Test endpoint for Chinese title generation."""
+    test_title = "How US tariffs could impact GCC banks and economy"
+    try:
+        chinese_title = generate_chinese_title(test_title)
+        return jsonify({
+            'status': 'success',
+            'english_title': test_title,
+            'chinese_title': chinese_title
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 def start_tracking_server():
     """Start the tracking server."""
     try:
@@ -184,6 +206,25 @@ def start_tracking_server():
     except Exception as e:
         logging.error(f"Failed to start Flask server: {e}")
         raise
+
+def generate_chinese_title(english_title):
+    """Generate a Chinese title using OpenAI."""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": "You are a professional translator specializing in business and financial news. Translate the title to Chinese, keeping it concise and professional. The translation should capture the key meaning while being natural in Chinese."},
+                {"role": "user", "content": f"Please translate this title to Chinese: {english_title}"}
+            ],
+            temperature=0.7,
+            max_tokens=100
+        )
+        chinese_title = response.choices[0].message.content.strip()
+        logging.info(f"Generated Chinese title for: {english_title}")
+        return chinese_title
+    except Exception as e:
+        logging.error(f"Error generating Chinese title: {str(e)}")
+        return "无标题"  # Return "No title" in Chinese if generation fails
 
 def create_email_content(news_items, tracking_id):
     """Create HTML content for the email with tracking."""
@@ -312,16 +353,21 @@ def create_email_content(news_items, tracking_id):
                 # Get or generate title
                 article_info = item.get('article_info', {})
                 english_title = article_info.get('title', 'No title')
-                chinese_title = article_info.get('chinese_title', '无标题')
+                
+                # If no title, try to extract from summary
                 if english_title == 'No title' and 'English_summary' in item:
-                    # Extract first sentence from English summary as title
                     english_title = item['English_summary'].split('.')[0] + '.'
+                
+                # Generate Chinese title if not present
+                chinese_title = article_info.get('chinese_title')
+                if not chinese_title:
+                    chinese_title = generate_chinese_title(english_title)
                 
                 html_content += f"""
                 <div class="news-item">
                     <div class="title">
                         <div>{english_title}</div>
-                        <div style="font-size: 0.9em;">{chinese_title}</div>
+                        <div style="font-size: 0.9em; color: #444;">{chinese_title}</div>
                     </div>
                     <div class="summary">
                         <div class="summary-header">English Summary:</div>
