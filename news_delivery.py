@@ -395,8 +395,8 @@ def create_email_content(news_items, tracking_id):
         tracking_url = f"http://your-domain.com/track/{tracking_id}"
         html_content += f"""
             <div class="footer">
-                <p>This email is automatically generated and sent by MENA/SEA News System</p>
-                <p>© {datetime.now().year} All Rights Reserved</p>
+                <p>This email is automatically generated and sent by Going Global-Daily Digest</p>
+                <p>© {datetime.now().year} Going Global-Daily Digest. All Rights Reserved</p>
             </div>
             <img src="{tracking_url}" width="1" height="1" alt="" />
         </body>
@@ -428,7 +428,7 @@ def send_email(news_items):
         # Create message
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f"MENA/SEA Daily News - 出海中东/东南亚日报 - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
-        msg['From'] = os.getenv('EMAIL_FROM')
+        msg['From'] = f"Going Global-Daily Digest <{os.getenv('EMAIL_FROM')}>"
         msg['To'] = os.getenv('EMAIL_RECIPIENTS')
         
         # Attach HTML content
@@ -449,7 +449,8 @@ def send_email(news_items):
                 'timestamp': datetime.now(timezone.utc).isoformat(),
                 'recipients': os.getenv('EMAIL_RECIPIENTS').split(','),
                 'news_count': len(news_items),
-                'news_titles': [item.get('article_info', {}).get('title') for item in news_items]
+                'news_titles': [item.get('article_info', {}).get('title') for item in news_items],
+                'sender_name': 'Going Global-Daily Digest'  # Add sender name to tracking data
             }
             db.collection('email_sent').add(email_data)
             
