@@ -190,17 +190,83 @@ def create_email_content(news_items, tracking_id):
     if not news_items:
         return None
     
-    # Start with the email header
+    # Start with the email header and CSS styles
     html_content = f"""
     <html>
     <head>
+        <meta charset="UTF-8">
         <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
-            .news-item {{ margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }}
-            .title {{ font-size: 18px; font-weight: bold; color: #333; }}
-            .summary {{ margin: 10px 0; }}
-            .link {{ color: #0066cc; text-decoration: none; }}
-            .timestamp {{ color: #666; font-size: 12px; }}
+            body {{
+                font-family: 'Segoe UI', Arial, sans-serif;
+                line-height: 1.6;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }}
+            .email-header {{
+                background-color: #003366;
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 8px 8px 0 0;
+                margin-bottom: 20px;
+            }}
+            .news-item {{
+                background-color: white;
+                margin-bottom: 30px;
+                padding: 25px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            .title {{
+                font-size: 20px;
+                font-weight: bold;
+                color: #003366;
+                margin-bottom: 15px;
+                border-bottom: 2px solid #eee;
+                padding-bottom: 10px;
+            }}
+            .summary {{
+                margin: 15px 0;
+                padding: 10px;
+                background-color: #f9f9f9;
+                border-left: 4px solid #003366;
+            }}
+            .summary-header {{
+                font-weight: bold;
+                color: #003366;
+                margin-bottom: 5px;
+            }}
+            .link {{
+                margin-top: 15px;
+            }}
+            .link a {{
+                color: #0066cc;
+                text-decoration: none;
+                padding: 5px 10px;
+                border: 1px solid #0066cc;
+                border-radius: 4px;
+                transition: all 0.3s ease;
+            }}
+            .link a:hover {{
+                background-color: #0066cc;
+                color: white;
+            }}
+            .timestamp {{
+                color: #666;
+                font-size: 12px;
+                margin-top: 10px;
+                font-style: italic;
+            }}
+            .footer {{
+                text-align: center;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+                border-top: 1px solid #eee;
+                margin-top: 20px;
+            }}
         </style>
         <script>
             // Track time spent reading
@@ -209,7 +275,7 @@ def create_email_content(news_items, tracking_id):
                 let endTime = new Date();
                 let timeSpent = Math.round((endTime - startTime) / 1000);
                 let trackingId = '{tracking_id}';
-                fetch(`/track/close/${{trackingId}}?time_spent=${{timeSpent}}`);
+                fetch(`/track/close/${trackingId}?time_spent=${timeSpent}`);
             }};
             
             // Track link clicks
@@ -217,38 +283,60 @@ def create_email_content(news_items, tracking_id):
                 if (e.target.tagName === 'A') {{
                     let trackingId = '{tracking_id}';
                     let url = e.target.href;
-                    fetch(`/track/click/${{trackingId}}?url=${{encodeURIComponent(url)}}`);
+                    fetch(`/track/click/${trackingId}?url=${encodeURIComponent(url)}`);
                 }}
             }});
         </script>
     </head>
     <body>
+        <div class="email-header">
+            <h1>MENA/SEA Daily News - 出海中东/东南亚日报</h1>
+            <p>{datetime.now(timezone.utc).strftime("%Y-%m-%d")}</p>
+        </div>
     """
     
     # Add each news item
     for item in news_items:
+        # Get or generate title
+        english_title = item.get('article_info', {}).get('title', 'No title')
+        chinese_title = item.get('article_info', {}).get('chinese_title', '无标题')
+        if english_title == 'No title' and 'English_summary' in item:
+            # Extract first sentence from English summary as title
+            english_title = item['English_summary'].split('.')[0] + '.'
+        
         html_content += f"""
         <div class="news-item">
-            <div class="title">{item.get('title', 'No title')}</div>
+            <div class="title">
+                <div>{english_title}</div>
+                <div style="font-size: 0.9em;">{chinese_title}</div>
+            </div>
             <div class="summary">
-                <p><strong>English Summary:</strong> {item.get('English_summary', 'No summary available')}</p>
-                <p><strong>Chinese Summary:</strong> {item.get('Chinese_summary', 'No summary available')}</p>
+                <div class="summary-header">English Summary:</div>
+                <p>{item.get('English_summary', 'No summary available')}</p>
+            </div>
+            <div class="summary">
+                <div class="summary-header">Chinese Summary 中文摘要:</div>
+                <p>{item.get('Chinese_summary', '暂无摘要')}</p>
             </div>
             <div class="link">
-                <a href="{item.get('url', '#')}" target="_blank">Read more</a>
+                <a href="{item.get('article_info', {}).get('url', '#')}" target="_blank">Read Full Article 阅读全文</a>
             </div>
             <div class="timestamp">
-                Published: {item.get('date', 'Unknown date')}
+                Source: {item.get('article_info', {}).get('source', 'Unknown')}
+                <br>
+                Published: {item.get('article_info', {}).get('date', 'Unknown date')}
             </div>
         </div>
         """
     
-    # Add tracking pixel
+    # Add tracking pixel and footer
     tracking_url = f"http://your-domain.com/track/{tracking_id}"
-    html_content += f'<img src="{tracking_url}" width="1" height="1" alt="" />'
-    
-    # Close the HTML
-    html_content += """
+    html_content += f"""
+        <div class="footer">
+            <p>This email is automatically generated and sent by MENA/SEA News System</p>
+            <p>© {datetime.now().year} All Rights Reserved</p>
+        </div>
+        <img src="{tracking_url}" width="1" height="1" alt="" />
     </body>
     </html>
     """
@@ -273,7 +361,7 @@ def send_email(news_items):
         
         # Create message
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"SEA News Summary - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
+        msg['Subject'] = f"MENA/SEA Daily News - 出海中东/东南亚日报 - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         msg['From'] = os.getenv('EMAIL_FROM')
         msg['To'] = os.getenv('EMAIL_RECIPIENTS')
         
