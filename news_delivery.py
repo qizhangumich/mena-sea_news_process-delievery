@@ -46,41 +46,18 @@ app.config.update(
 )
 
 def get_today_news():
-    """Retrieve today's news from Firestore."""
+    """Retrieve news from Firestore today_news collection."""
     try:
-        # Get today's date in Dubai timezone (UTC+4)
-        dubai_tz = pytz.timezone('Asia/Dubai')
-        today = datetime.now(dubai_tz).date()
-        today_str = today.strftime("%Y-%m-%d")
-        
-        # Also try yesterday if it's early morning in Dubai
-        dubai_time = datetime.now(dubai_tz)
-        yesterday = (dubai_time - timedelta(days=1)).date()
-        yesterday_str = yesterday.strftime("%Y-%m-%d")
-        
-        logging.info(f"Searching for news from dates: {today_str} or {yesterday_str}")
-        
-        # Query the today_news collection for both today and yesterday
+        # Query all documents in the today_news collection
         news_ref = db.collection('today_news')
-        docs = list(news_ref.where('date', 'in', [today_str, yesterday_str]).stream())
+        docs = news_ref.stream()
         
         news_items = []
         for doc in docs:
             news_data = doc.to_dict()
             news_items.append(news_data)
         
-        if not news_items:
-            # If no news found, try querying without timezone conversion
-            utc_today = datetime.now(timezone.utc).date()
-            utc_today_str = utc_today.strftime("%Y-%m-%d")
-            logging.info(f"No news found for Dubai time, trying UTC date: {utc_today_str}")
-            
-            docs = list(news_ref.where('date', '==', utc_today_str).stream())
-            for doc in docs:
-                news_data = doc.to_dict()
-                news_items.append(news_data)
-        
-        logging.info(f"Found {len(news_items)} news items")
+        logging.info(f"Found {len(news_items)} news items in today_news collection")
         return news_items
     except Exception as e:
         logging.error(f"Error retrieving news: {e}")
@@ -171,13 +148,12 @@ def trigger_email_send():
     try:
         news_items = get_today_news()
         if not news_items:
-            msg = "No news items found for today or yesterday"
+            msg = "No news items found in today_news collection"
             logging.warning(msg)
             return jsonify({
                 'status': 'error',
                 'message': msg,
-                'current_time_utc': datetime.now(timezone.utc).isoformat(),
-                'current_time_dubai': datetime.now(pytz.timezone('Asia/Dubai')).isoformat()
+                'current_time_utc': datetime.now(timezone.utc).isoformat()
             }), 404
         
         success = send_email(news_items)
