@@ -2,20 +2,16 @@ name: News Delivery
 
 on:
   schedule:
-    # Run news_delivery.py at 19:30 UTC+8 (11:30 UTC)
+    # Run at 19:30 UTC+8 (11:30 UTC)
     - cron: '30 11 * * *'
-  workflow_dispatch:
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  process-news:
-    name: Deliver News Articles
+  deliver-news:
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -29,27 +25,30 @@ jobs:
     
     - name: Create .env file
       run: |
-        cat << EOF > .env
-        SMTP_SERVER=${{ secrets.SMTP_SERVER }}
-        SMTP_PORT=${{ secrets.SMTP_PORT }}
-        SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
-        SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-        EMAIL_FROM=${{ secrets.EMAIL_FROM }}
-        EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}
-        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-        GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-        EOF
+        echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> .env
+        echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+        echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> .env
+        echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
+        echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
+        echo "EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}" >> .env
     
-    - name: Run news delivery
+    - name: Set up Firebase credentials
+      run: |
+        echo '${{ secrets.FIREBASE_CREDENTIALS }}' > firebase_credentials.json
+        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase_credentials.json" >> .env
+    
+    - name: Run news delivery script
       run: python news_delivery.py
     
     - name: Upload logs
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: news-delivery-logs
+        name: delivery-logs
         path: delivery.log
     
     - name: Cleanup sensitive files
+      if: always()
       run: |
         rm -f .env
-        rm -f delivery.log 
+        rm -f firebase_credentials.json 
