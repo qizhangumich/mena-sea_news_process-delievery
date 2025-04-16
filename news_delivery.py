@@ -28,25 +28,30 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 def get_today_news():
-    """Get today's news from Firebase or use test data if Firebase fails."""
+    """Get all news from Firebase today_news collection."""
     try:
         # Try to initialize Firebase
         cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
         firebase_admin.initialize_app(cred)
         db = firestore.client()
         
-        # Try to get news from Firebase
+        # Get all documents from today_news collection
         news_ref = db.collection('today_news')
+        docs = news_ref.get()  # Get all documents
         news_items = []
-        for doc in news_ref.stream():
-            news_items.append(doc.to_dict())
+        
+        for doc in docs:
+            news_data = doc.to_dict()
+            # Add document ID for reference
+            news_data['id'] = doc.id
+            news_items.append(news_data)
         
         if news_items:
-            logging.info(f"Retrieved {len(news_items)} news items from Firebase")
+            logging.info(f"Retrieved {len(news_items)} items from today_news collection")
             return news_items
             
     except Exception as e:
-        logging.warning(f"Could not get news from Firebase: {e}")
+        logging.error(f"Error accessing Firebase: {e}")
     
     # Use test data if Firebase fails or returns no items
     test_items = [
@@ -71,7 +76,7 @@ def get_today_news():
             'url': 'https://example.com/news/5'
         }
     ]
-    logging.info("Using test news items")
+    logging.info("Using test news items since Firebase access failed")
     return test_items
 
 def generate_chinese_title(english_title):
