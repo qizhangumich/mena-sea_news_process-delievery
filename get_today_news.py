@@ -19,14 +19,22 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase once at the module level
-try:
-    cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-except Exception as e:
-    logger.error(f"Failed to initialize Firebase: {str(e)}")
-    raise
+# Global Firebase variables
+db = None
+
+def initialize_firebase():
+    """Initialize Firebase with credentials"""
+    global db
+    try:
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
+            firebase_admin.initialize_app(cred)
+        if not db:
+            db = firestore.client()
+        logger.info("Firebase initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Firebase: {str(e)}")
+        raise
 
 def safe_get_documents(collection_ref, max_attempts=3):
     """Safely get documents from a collection with retry logic"""
@@ -152,7 +160,7 @@ def generate_summaries(content):
         chinese_response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "用3-5句话总结新闻文章的主要内容。请使用正式的中文新闻语言，确保summary是以句号结尾。"},
+                {"role": "system", "content": "请用简练的几句话总结新闻文章的主要内容。请给出一个完整的中文summary。"},
                 {"role": "user", "content": f"请用中文总结这篇新闻：\n\n{content}"}
             ],
             max_tokens=300,
@@ -372,6 +380,8 @@ def ensure_today_news_collection():
 if __name__ == "__main__":
     # First ensure the today_news collection exists
     ensure_today_news_collection()
+    # Initialize Firebase
+    initialize_firebase()
     # Then get today's news and generate summaries
     # Get target date from command line argument if provided
     if len(sys.argv) > 1:
