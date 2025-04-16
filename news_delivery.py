@@ -272,13 +272,14 @@ def create_email_content(news_items, tracking_id):
             <script>
                 // Track time spent reading
                 let startTime = new Date();
-                let emailTrackingId = '{tracking_id}';  // Define tracking ID at the top level
+                const trackingId = '{tracking_id}';  // Define tracking ID as a constant
                 
                 window.onbeforeunload = function() {{
                     try {{
                         let endTime = new Date();
                         let timeSpent = Math.round((endTime - startTime) / 1000);
-                        fetch(`/track/close/${{emailTrackingId}}?time_spent=${{timeSpent}}`);
+                        // Use string concatenation instead of template literals to avoid f-string confusion
+                        fetch('/track/close/' + trackingId + '?time_spent=' + timeSpent);
                     }} catch(e) {{
                         console.error('Error tracking email close:', e);
                     }}
@@ -289,7 +290,8 @@ def create_email_content(news_items, tracking_id):
                     if (e.target.tagName === 'A') {{
                         try {{
                             let url = e.target.href;
-                            fetch(`/track/click/${{emailTrackingId}}?url=${{encodeURIComponent(url)}}`);
+                            // Use string concatenation instead of template literals to avoid f-string confusion
+                            fetch('/track/click/' + trackingId + '?url=' + encodeURIComponent(url));
                         }} catch(e) {{
                             console.error('Error tracking link click:', e);
                         }}
