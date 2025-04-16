@@ -37,6 +37,7 @@ jobs:
         EMAIL_FROM=${{ secrets.EMAIL_FROM }}
         EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}
         OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         EOF
     
     - name: Run news delivery
@@ -46,9 +47,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: news-delivery-logs
-        path: news_delivery.log
+        path: delivery.log
     
     - name: Cleanup sensitive files
       run: |
         rm -f .env
-        rm -f news_delivery.log 
+        rm -f delivery.log 
