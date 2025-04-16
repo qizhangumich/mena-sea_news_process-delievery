@@ -358,6 +358,10 @@ def generate_summaries_for_today_news():
 def ensure_today_news_collection():
     """Ensure today_news collection exists, create it if it doesn't"""
     try:
+        if not db:
+            logger.error("Firebase database not initialized")
+            raise Exception("Firebase database not initialized")
+            
         # Try to access the collection
         today_news_ref = db.collection('today_news')
         
@@ -371,18 +375,17 @@ def ensure_today_news_collection():
         # Delete the dummy document
         dummy_doc.delete()
         
-        logger.info("Ensured today_news collection exists")
+        logger.info("Successfully ensured today_news collection exists")
         
     except Exception as e:
         logger.error(f"Error ensuring today_news collection: {str(e)}")
         raise
 
 if __name__ == "__main__":
-    # First ensure the today_news collection exists
-    ensure_today_news_collection()
-    # Initialize Firebase
+    # Initialize Firebase first
     initialize_firebase()
-    # Then get today's news and generate summaries
+    # Then ensure the today_news collection exists
+    ensure_today_news_collection()
     # Get target date from command line argument if provided
     if len(sys.argv) > 1:
         target_date = sys.argv[1]
