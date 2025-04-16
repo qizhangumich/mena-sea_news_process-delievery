@@ -1,4 +1,4 @@
-name: SEA News Delivery
+name: News Delivery
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deliver-news:
+  process-news:
     name: Deliver News Articles
     runs-on: ubuntu-latest
     env:
@@ -15,10 +15,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     
@@ -29,31 +29,26 @@ jobs:
     
     - name: Create .env file
       run: |
-        echo "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" >> .env
-        echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .env
-        echo "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" >> .env
-        echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-        echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
-        echo "EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}" >> .env
-        echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+        cat << EOF > .env
+        SMTP_SERVER=${{ secrets.SMTP_SERVER }}
+        SMTP_PORT=${{ secrets.SMTP_PORT }}
+        SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+        SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+        EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+        EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        EOF
     
-    - name: Run news_delivery.py
-      run: |
-        # Print environment for debugging (excluding sensitive values)
-        env | grep -v "KEY\|PASSWORD" || true
-        
-        # Run the script
-        python news_delivery.py
+    - name: Run news delivery
+      run: python news_delivery.py
     
     - name: Upload logs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: news-delivery-logs
-        path: |
-          *.log
-          logs/
+        path: news_delivery.log
     
     - name: Cleanup sensitive files
-      if: always()
       run: |
-        rm -f .env 
+        rm -f .env
+        rm -f news_delivery.log 
