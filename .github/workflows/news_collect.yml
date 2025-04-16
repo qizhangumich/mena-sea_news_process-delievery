@@ -2,8 +2,8 @@ name: SEA News Collection
 
 on:
   schedule:
-    # Run get_today_news.py at 19:00 UTC+8 (11:00 UTC)
-    - cron: '0 11 * * *'
+    # Run get_today_news.py at 21:35 uae
+    - cron: '35 5 * * *'
   workflow_dispatch:
 
 jobs:
