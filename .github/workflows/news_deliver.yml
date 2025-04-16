@@ -45,15 +45,43 @@ jobs:
     - name: Run news_delivery.py with tracking
       run: |
         # Start the Flask server for tracking in the background
-        nohup python news_delivery.py > tracking_server.log 2>&1 &
-        # Wait for server to start
-        sleep 15
-        # Send emails (this is handled by the same script now)
-        curl http://localhost:5000/send_emails
+        python news_delivery.py > flask_server.log 2>&1 &
+        server_pid=$!
+        
+        # Wait for server to start and verify it's running
+        echo "Waiting for Flask server to start..."
+        max_attempts=30
+        attempt=0
+        while ! curl -s http://localhost:5000/health > /dev/null; do
+          if ! ps -p $server_pid > /dev/null; then
+            echo "Flask server failed to start. Server log:"
+            cat flask_server.log
+            exit 1
+          fi
+          sleep 2
+          attempt=$((attempt + 1))
+          if [ $attempt -ge $max_attempts ]; then
+            echo "Timeout waiting for Flask server. Server log:"
+            cat flask_server.log
+            exit 1
+          fi
+          echo "Attempt $attempt: Server not ready yet..."
+        done
+        
+        echo "Flask server is running. Sending emails..."
+        # Send emails
+        curl -v http://localhost:5000/send_emails
+        
         # Wait for emails to be sent
-        sleep 10
-        # Kill the Flask server
-        pkill -f "python news_delivery.py"
+        sleep 30
+        
+        # Gracefully stop the Flask server
+        kill $server_pid
+        wait $server_pid
+        
+        # Check the server logs
+        echo "Flask server logs:"
+        cat flask_server.log
     
     - name: List files for debugging
       run: ls -R

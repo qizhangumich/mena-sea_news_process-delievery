@@ -135,9 +135,33 @@ def track_click(tracking_id):
     track_link_click(tracking_id, link_url)
     return jsonify({'status': 'success'})
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint."""
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now(timezone.utc).isoformat()})
+
+@app.route('/send_emails')
+def trigger_email_send():
+    """Endpoint to trigger email sending."""
+    try:
+        news_items = get_today_news()
+        if not news_items:
+            return jsonify({'status': 'error', 'message': 'No news items found for today'}), 404
+        
+        send_email(news_items)
+        return jsonify({'status': 'success', 'message': 'Emails sent successfully'})
+    except Exception as e:
+        logging.error(f"Error sending emails: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 def start_tracking_server():
     """Start the tracking server in a separate thread."""
-    app.run(host='0.0.0.0', port=5000)
+    try:
+        logging.info("Starting Flask server...")
+        app.run(host='0.0.0.0', port=5000)
+    except Exception as e:
+        logging.error(f"Failed to start Flask server: {e}")
+        raise
 
 def create_email_content(news_items, tracking_id):
     """Create HTML content for the email with tracking."""
