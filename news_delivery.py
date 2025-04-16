@@ -47,9 +47,6 @@ app.config.update(
     SERVER_NAME=None  # Allow any host
 )
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
 def get_today_news():
     """Retrieve news from Firestore today_news collection."""
     try:
@@ -210,6 +207,14 @@ def start_tracking_server():
 def generate_chinese_title(english_title):
     """Generate a Chinese title using OpenAI."""
     try:
+        # Initialize OpenAI client with API key
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            logging.error("OpenAI API key not found in environment variables")
+            return "无标题"  # Return "No title" in Chinese if API key is missing
+            
+        client = OpenAI(api_key=api_key)
+        
         response = client.chat.completions.create(
             model="gpt-4-turbo-preview",
             messages=[

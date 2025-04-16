@@ -10,13 +10,15 @@ jobs:
   deliver-news:
     name: Deliver News Articles
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: '3.10'
     
@@ -49,6 +51,9 @@ jobs:
         export FLASK_APP=news_delivery.py
         export FLASK_ENV=production
         export FLASK_DEBUG=0
+        
+        # Print environment for debugging (excluding sensitive values)
+        env | grep -v "KEY\|PASSWORD\|CREDENTIAL" || true
         
         # Start the Flask server in the background
         flask run --host=0.0.0.0 --port=5000 > flask_server.log 2>&1 &
@@ -95,7 +100,7 @@ jobs:
       run: ls -R
       
     - name: Upload delivery logs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: news-delivery-logs
         path: |
