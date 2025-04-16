@@ -39,10 +39,28 @@ else:
         logging.error(f"Error initializing OpenAI client: {str(e)}")
         client = None
 
-# Initialize Firebase
-cred = credentials.Certificate(json.loads(os.getenv('GOOGLE_APPLICATION_CREDENTIALS')))
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+# Initialize Firebase with error handling
+try:
+    firebase_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    if not firebase_creds:
+        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS not found in environment variables")
+    
+    # Try to load the credentials from the file first
+    if os.path.exists(firebase_creds):
+        cred = credentials.Certificate(firebase_creds)
+    else:
+        # If not a file path, try to parse it as JSON string
+        try:
+            cred = credentials.Certificate(json.loads(firebase_creds))
+        except json.JSONDecodeError:
+            raise ValueError("GOOGLE_APPLICATION_CREDENTIALS is neither a valid file path nor a valid JSON string")
+    
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    logging.info("Firebase initialized successfully")
+except Exception as e:
+    logging.error(f"Error initializing Firebase: {str(e)}")
+    raise
 
 def get_today_news():
     """Retrieve today's news items from Firestore."""

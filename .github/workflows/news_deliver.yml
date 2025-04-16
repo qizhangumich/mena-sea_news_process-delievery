@@ -15,10 +15,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@main
+      uses: actions/checkout@v2
     
     - name: Set up Python
-      uses: actions/setup-python@main
+      uses: actions/setup-python@v2
       with:
         python-version: '3.10'
     
@@ -29,10 +29,17 @@ jobs:
         
     - name: Setup Firebase credentials
       run: |
+        # Create the credentials file
         echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > firebase-service-account.json
+        
         # Verify JSON is valid
         python -c "import json; json.load(open('firebase-service-account.json'))"
+        
+        # Set the environment variable to point to the file
         echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> $GITHUB_ENV
+        
+        # Also add it to .env for local development
+        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> .env
     
     - name: Create .env file
       run: |
@@ -42,7 +49,6 @@ jobs:
         echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
         echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
         echo "EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}" >> .env
-        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> .env
         echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
     
     - name: Run news_delivery.py with tracking
@@ -100,7 +106,7 @@ jobs:
       run: ls -R
       
     - name: Upload delivery logs
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v2
       with:
         name: news-delivery-logs
         path: |
