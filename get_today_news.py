@@ -183,13 +183,19 @@ def get_today_news(target_date=None):
         # Delete old data first
         delete_old_data()
         
-        # Get all documents from the articles collection
+        # Get all documents from the articles collection with retry
         articles_ref = db.collection('articles')
-        docs = articles_ref.stream()
+        try:
+            docs = list(articles_ref.stream())  # Convert to list to avoid streaming timeout
+        except Exception as e:
+            logger.error(f"Error fetching articles: {e}")
+            return
         
         if not docs:
             logger.warning("No documents found in articles collection")
             return
+        
+        logger.info(f"Found {len(docs)} total articles to process")
         
         # Process articles
         processed_count = 0
@@ -209,7 +215,7 @@ def get_today_news(target_date=None):
                 
                 if str(article_date).startswith(today_str):
                     matched_count += 1
-                    logger.info(f"Found matching article: {doc.id}")
+                    logger.info(f"Found matching article {matched_count}: {doc.id}")
                     
                     if not all(key in data for key in ['title', 'date', 'content', 'source']):
                         continue
@@ -235,14 +241,26 @@ def get_today_news(target_date=None):
                         'chinese_summary': summaries['chinese_summary']
                     }
                     
-                    # Save to today_news collection
+                    # Save to today_news collection with retry
                     timestamp = int(time.time() * 1000)
                     doc_id = f"{today_str}_{cleaned_source}_{timestamp}_{source_counts[cleaned_source]}"
                     doc_ref = today_news_ref.document(doc_id)
-                    doc_ref.set(article_data)
-                    saved_count += 1
                     
-                    # Wait 5 seconds before processing next article (to avoid OpenAI rate limits)
+                    max_retries = 3
+                    for retry in range(max_retries):
+                        try:
+                            doc_ref.set(article_data)
+                            saved_count += 1
+                            logger.info(f"Successfully saved article {doc_id}")
+                            break
+                        except Exception as e:
+                            if retry == max_retries - 1:
+                                logger.error(f"Failed to save article {doc_id} after {max_retries} attempts: {e}")
+                            else:
+                                logger.warning(f"Retry {retry + 1} for saving article {doc_id}")
+                                time.sleep(2)
+                    
+                    # Wait 5 seconds before processing next article
                     time.sleep(5)
             
             except Exception as e:
