@@ -140,7 +140,7 @@ def generate_summaries(content):
                 {"role": "system", "content": "Create a concise 2-3 sentence summary of the news article."},
                 {"role": "user", "content": f"Summarize this news article:\n\n{content}"}
             ],
-            max_tokens=150,
+            max_tokens=300,
             temperature=0.7
         )
         english_summary = english_response.choices[0].message.content.strip()
@@ -152,10 +152,10 @@ def generate_summaries(content):
         chinese_response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "用2-3句话总结新闻文章的主要内容。请使用正式的中文新闻语言。"},
+                {"role": "system", "content": "用3句话总结新闻文章的主要内容。请使用正式的中文新闻语言，确保summary是以句号结尾。"},
                 {"role": "user", "content": f"请用中文总结这篇新闻：\n\n{content}"}
             ],
-            max_tokens=150,
+            max_tokens=300,
             temperature=0.7
         )
         chinese_summary = chinese_response.choices[0].message.content.strip()
