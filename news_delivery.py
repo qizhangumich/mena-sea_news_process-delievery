@@ -104,11 +104,8 @@ def send_email(news_items):
         msg['From'] = email_from
         msg['To'] = ', '.join(email_recipients)
         
-        # Generate tracking ID
-        tracking_id = str(uuid.uuid4())
-        
         # Create email content
-        html_content = create_email_content(news_items, tracking_id)
+        html_content = create_email_content(news_items)
         msg.attach(MIMEText(html_content, 'html'))
         
         # Send email
@@ -133,16 +130,13 @@ def send_email(news_items):
         logging.error(f"Error sending email: {str(e)}")
         return False
 
-def create_email_content(news_items, tracking_id):
+def create_email_content(news_items):
     """Create HTML content for the email."""
     try:
         # Generate Chinese titles for all news items
         for item in news_items:
             if 'title' in item and not item.get('chinese_title'):
                 item['chinese_title'] = generate_chinese_title(item['title'])
-        
-        # Create tracking pixel
-        tracking_pixel = f'<img src="http://localhost:5000/track/{tracking_id}" width="1" height="1" style="display:none">'
         
         # Create HTML content
         html_content = f"""
@@ -170,23 +164,11 @@ def create_email_content(news_items, tracking_id):
                     <div class="title">{item['title']}</div>
                     <div class="chinese-title">{item.get('chinese_title', '无标题')}</div>
                     <div class="summary">{item.get('summary', 'No summary available')}</div>
-                    <a href="http://localhost:5000/track/click/{tracking_id}?url={item.get('url', '')}" class="link">Read more</a>
+                    <a href="{item.get('url', '#')}" class="link">Read more</a>
                 </div>
                 '''
                 for item in news_items
             ])}
-            
-            {tracking_pixel}
-            
-            <script>
-                // Track time spent reading
-                let startTime = new Date();
-                window.onbeforeunload = function() {{
-                    let endTime = new Date();
-                    let timeSpent = Math.round((endTime - startTime) / 1000);
-                    fetch(`http://localhost:5000/track/close/{tracking_id}?time_spent=${{timeSpent}}`);
-                }};
-            </script>
         </body>
         </html>
         """

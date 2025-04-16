@@ -26,20 +26,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Setup Firebase credentials
-      run: |
-        # Create the credentials file
-        echo '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}' > firebase-service-account.json
-        
-        # Verify JSON is valid
-        python -c "import json; json.load(open('firebase-service-account.json'))"
-        
-        # Set the environment variable to point to the file
-        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> $GITHUB_ENV
-        
-        # Also add it to .env for local development
-        echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json" >> .env
     
     - name: Create .env file
       run: |
@@ -51,61 +37,15 @@ jobs:
         echo "EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}" >> .env
         echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
     
-    - name: Run news_delivery.py with tracking
+    - name: Run news_delivery.py
       run: |
-        # Set Flask environment variables
-        export FLASK_APP=news_delivery.py
-        export FLASK_ENV=production
-        export FLASK_DEBUG=0
-        
         # Print environment for debugging (excluding sensitive values)
-        env | grep -v "KEY\|PASSWORD\|CREDENTIAL" || true
+        env | grep -v "KEY\|PASSWORD" || true
         
-        # Start the Flask server in the background
-        flask run --host=0.0.0.0 --port=5000 > flask_server.log 2>&1 &
-        
-        # Store the PID
-        echo $! > flask.pid
-        
-        # Wait for server to start and verify it's running
-        echo "Waiting for Flask server to start..."
-        max_attempts=30
-        attempt=0
-        while ! curl -s http://localhost:5000/health > /dev/null; do
-          if ! ps -p $(cat flask.pid) > /dev/null; then
-            echo "Flask server failed to start. Server log:"
-            cat flask_server.log
-            exit 1
-          fi
-          sleep 2
-          attempt=$((attempt + 1))
-          if [ $attempt -ge $max_attempts ]; then
-            echo "Timeout waiting for Flask server. Server log:"
-            cat flask_server.log
-            exit 1
-          fi
-          echo "Attempt $attempt: Server not ready yet..."
-        done
-        
-        echo "Flask server is running. Sending emails..."
-        # Send emails with verbose output
-        curl -v http://localhost:5000/send_emails
-        
-        # Wait for emails to be sent
-        sleep 30
-        
-        # Gracefully stop the Flask server
-        kill $(cat flask.pid)
-        rm flask.pid
-        
-        # Check the server logs
-        echo "Flask server logs:"
-        cat flask_server.log
+        # Run the script
+        python news_delivery.py
     
-    - name: List files for debugging
-      run: ls -R
-      
-    - name: Upload delivery logs
+    - name: Upload logs
       uses: actions/upload-artifact@v2
       with:
         name: news-delivery-logs
@@ -116,5 +56,4 @@ jobs:
     - name: Cleanup sensitive files
       if: always()
       run: |
-        rm -f firebase-service-account.json
         rm -f .env 
