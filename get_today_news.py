@@ -26,12 +26,38 @@ def initialize_firebase():
     """Initialize Firebase with credentials"""
     global db
     try:
+        # Check if credentials file exists and is readable
+        cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        if not cred_path:
+            logger.error("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+            raise Exception("Firebase credentials path not set in environment")
+            
+        if not os.path.exists(cred_path):
+            logger.error(f"Firebase credentials file not found at: {cred_path}")
+            raise Exception(f"Firebase credentials file not found: {cred_path}")
+            
+        logger.info(f"Found credentials file at: {cred_path}")
+        
+        # Initialize Firebase app if not already initialized
         if not firebase_admin._apps:
-            cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))
-            firebase_admin.initialize_app(cred)
-        if not db:
+            try:
+                cred = credentials.Certificate(cred_path)
+                firebase_admin.initialize_app(cred)
+                logger.info("Firebase app initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize Firebase app: {str(e)}")
+                raise
+        else:
+            logger.info("Firebase app already initialized")
+            
+        # Initialize Firestore client
+        try:
             db = firestore.client()
-        logger.info("Firebase initialized successfully")
+            logger.info("Firestore client initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Firestore client: {str(e)}")
+            raise
+            
     except Exception as e:
         logger.error(f"Failed to initialize Firebase: {str(e)}")
         raise
@@ -363,19 +389,22 @@ def ensure_today_news_collection():
             raise Exception("Firebase database not initialized")
             
         # Try to access the collection
-        today_news_ref = db.collection('today_news')
-        
-        # Create a dummy document to ensure collection exists
-        dummy_doc = today_news_ref.document('initialization')
-        dummy_doc.set({
-            'initialization_time': datetime.now(pytz.timezone('Asia/Dubai')).strftime("%Y-%m-%d %H:%M:%S"),
-            'status': 'collection_created'
-        })
-        
-        # Delete the dummy document
-        dummy_doc.delete()
-        
-        logger.info("Successfully ensured today_news collection exists")
+        try:
+            today_news_ref = db.collection('today_news')
+            # Try to get a document to verify collection exists
+            docs = today_news_ref.limit(1).stream()
+            next(docs, None)  # This will raise an exception if collection doesn't exist
+            logger.info("today_news collection already exists")
+        except Exception as e:
+            logger.info("today_news collection does not exist, creating it...")
+            # Create the collection by adding and then deleting a dummy document
+            dummy_doc = db.collection('today_news').document('initialization')
+            dummy_doc.set({
+                'initialization_time': datetime.now(pytz.timezone('Asia/Dubai')).strftime("%Y-%m-%d %H:%M:%S"),
+                'status': 'collection_created'
+            })
+            dummy_doc.delete()
+            logger.info("Successfully created today_news collection")
         
     except Exception as e:
         logger.error(f"Error ensuring today_news collection: {str(e)}")
