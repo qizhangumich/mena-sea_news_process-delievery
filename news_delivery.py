@@ -7,7 +7,7 @@ import time
 import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import firebase_admin
 from firebase_admin import credentials, firestore
 from dotenv import load_dotenv
@@ -53,17 +53,34 @@ def get_today_news():
         today = datetime.now(dubai_tz).date()
         today_str = today.strftime("%Y-%m-%d")
         
-        # Query the today_news collection
+        # Also try yesterday if it's early morning in Dubai
+        dubai_time = datetime.now(dubai_tz)
+        yesterday = (dubai_time - timedelta(days=1)).date()
+        yesterday_str = yesterday.strftime("%Y-%m-%d")
+        
+        logging.info(f"Searching for news from dates: {today_str} or {yesterday_str}")
+        
+        # Query the today_news collection for both today and yesterday
         news_ref = db.collection('today_news')
-        query = news_ref.where('date', '==', today_str)
-        docs = query.stream()
+        docs = list(news_ref.where('date', 'in', [today_str, yesterday_str]).stream())
         
         news_items = []
         for doc in docs:
             news_data = doc.to_dict()
             news_items.append(news_data)
         
-        logging.info(f"Found {len(news_items)} news items for today ({today_str})")
+        if not news_items:
+            # If no news found, try querying without timezone conversion
+            utc_today = datetime.now(timezone.utc).date()
+            utc_today_str = utc_today.strftime("%Y-%m-%d")
+            logging.info(f"No news found for Dubai time, trying UTC date: {utc_today_str}")
+            
+            docs = list(news_ref.where('date', '==', utc_today_str).stream())
+            for doc in docs:
+                news_data = doc.to_dict()
+                news_items.append(news_data)
+        
+        logging.info(f"Found {len(news_items)} news items")
         return news_items
     except Exception as e:
         logging.error(f"Error retrieving news: {e}")
@@ -154,10 +171,24 @@ def trigger_email_send():
     try:
         news_items = get_today_news()
         if not news_items:
-            return jsonify({'status': 'error', 'message': 'No news items found for today'}), 404
+            msg = "No news items found for today or yesterday"
+            logging.warning(msg)
+            return jsonify({
+                'status': 'error',
+                'message': msg,
+                'current_time_utc': datetime.now(timezone.utc).isoformat(),
+                'current_time_dubai': datetime.now(pytz.timezone('Asia/Dubai')).isoformat()
+            }), 404
         
-        send_email(news_items)
-        return jsonify({'status': 'success', 'message': 'Emails sent successfully'})
+        success = send_email(news_items)
+        if not success:
+            return jsonify({'status': 'error', 'message': 'Failed to send emails'}), 500
+            
+        return jsonify({
+            'status': 'success',
+            'message': 'Emails sent successfully',
+            'news_count': len(news_items)
+        })
     except Exception as e:
         logging.error(f"Error sending emails: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
