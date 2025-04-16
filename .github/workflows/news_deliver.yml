@@ -3,7 +3,7 @@ name: News Delivery
 on:
   schedule:
     # Run at 21:55 UAE 
-    - cron: '35 6 * * *'
+    - cron: '35 18 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
