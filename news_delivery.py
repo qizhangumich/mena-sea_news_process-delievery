@@ -23,6 +23,14 @@ logging.basicConfig(
 # Load environment variables
 load_dotenv()
 
+def mask_email(email):
+    """Mask email address for logging purposes."""
+    if '@' not in email:
+        return email
+    username, domain = email.split('@')
+    masked_username = username[:2] + '*' * (len(username) - 2)
+    return f"{masked_username}@{domain}"
+
 def get_today_news():
     """Get all news from Firebase today_news collection."""
     try:
@@ -64,8 +72,18 @@ def send_email(news_items):
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f"MENA/SEA News Today - {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         msg['From'] = os.getenv('EMAIL_FROM')
-        recipients = os.getenv('EMAIL_RECIPIENTS')
-        msg['To'] = recipients
+        
+        # Get and validate recipients
+        recipients_str = os.getenv('EMAIL_RECIPIENTS', '')
+        if not recipients_str:
+            raise ValueError("No email recipients configured")
+            
+        recipients = [email.strip() for email in recipients_str.split(',')]
+        msg['To'] = ', '.join(recipients)
+        
+        # Log masked recipients for debugging
+        masked_recipients = [mask_email(email) for email in recipients]
+        logging.info(f"Sending email to {len(recipients)} recipients: {', '.join(masked_recipients)}")
 
         # Generate content
         content = []
@@ -100,7 +118,7 @@ def send_email(news_items):
             server.login(os.getenv('SMTP_USERNAME'), os.getenv('SMTP_PASSWORD'))
             server.send_message(msg)
             
-        logging.info(f"Email sent successfully to {recipients}")
+        logging.info("Email sent successfully")
         return True
     except Exception as e:
         logging.error(f"Error sending email: {e}")
