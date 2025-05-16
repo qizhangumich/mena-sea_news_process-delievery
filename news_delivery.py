@@ -79,7 +79,10 @@ def send_email(news_items):
             raise ValueError("No email recipients configured")
             
         recipients = [email.strip() for email in recipients_str.split(',')]
-        msg['To'] = ', '.join(recipients)
+        # Use BCC instead of To field
+        msg['Bcc'] = ', '.join(recipients)
+        # Set a generic To address (can be the sender's address)
+        msg['To'] = os.getenv('EMAIL_FROM')
         
         # Log masked recipients for debugging
         masked_recipients = [mask_email(email) for email in recipients]
